@@ -5,6 +5,7 @@ import { ContextInput } from './components/ContextInput';
 import { ResultsPlaceholder } from './components/ResultsPlaceholder';
 import { LoadingState } from './components/LoadingState';
 import { ErrorState } from './components/ErrorState';
+import { Dashboard } from './components/Dashboard';
 import { getState, subscribe, setLoading, setDashboardData, setApiError } from './state';
 import { generateMealPlan } from './services/api';
 
@@ -111,23 +112,8 @@ export function App(): HTMLElement {
     } else if (apiStatus === 'error') {
       resultsBody.appendChild(ErrorState(apiError ?? 'Unknown error', handleGenerate));
     } else if (apiStatus === 'success') {
-      // Task 3 will render the full dashboard here.
-      // For now show a success confirmation with raw data summary.
       const { dashboardData } = getState();
-      resultsBody.innerHTML = `
-        <div class="rounded-[var(--radius-lg)] border border-[var(--color-success)]/30 bg-green-50 p-5 flex flex-col gap-3">
-          <div class="flex items-center gap-2">
-            <span class="text-lg">✅</span>
-            <p class="text-sm font-semibold text-[var(--color-success)]">Meal plan generated successfully</p>
-          </div>
-          <p class="text-xs text-[var(--color-muted)]">
-            ${dashboardData?.meals.length ?? 0} meals · ₹${dashboardData?.totalCost ?? 0} total ·
-            ${dashboardData?.swaps.length ?? 0} swap${(dashboardData?.swaps.length ?? 0) !== 1 ? 's' : ''} suggested
-          </p>
-          <pre class="text-xs bg-[var(--color-surface)] rounded-[var(--radius-md)] border border-[var(--color-border)] p-3 overflow-x-auto text-[var(--color-fg)] font-mono leading-relaxed">${JSON.stringify(dashboardData, null, 2)}</pre>
-          <p class="text-xs text-[var(--color-muted)]">Full dashboard UI coming in Task 3.</p>
-        </div>
-      `;
+      resultsBody.appendChild(Dashboard(dashboardData));
     }
   }
 
