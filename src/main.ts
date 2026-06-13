@@ -1,7 +1,5 @@
 import './style.css'
+import { App } from './app'
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <main class="min-h-screen flex items-center justify-center p-6">
-    <p class="text-[var(--color-muted)] text-sm font-mono">Ready.</p>
-  </main>
-`
+const appEl = document.querySelector<HTMLDivElement>('#app')!
+appEl.appendChild(App())
