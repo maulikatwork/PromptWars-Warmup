@@ -11,7 +11,7 @@ export function DietSelector(): HTMLElement {
   const section = document.createElement('div');
 
   function render() {
-    const { dietType } = getState();
+    const { dietType } = getState().form;
     section.innerHTML = `
       <fieldset class="border-0 p-0 m-0">
         <legend class="text-sm font-semibold text-[var(--color-fg)] mb-3 tracking-wide uppercase">
@@ -43,9 +43,7 @@ export function DietSelector(): HTMLElement {
     `;
 
     section.querySelectorAll<HTMLInputElement>('input[name="diet"]').forEach(input => {
-      input.addEventListener('change', () => {
-        setDietType(input.value as DietType);
-      });
+      input.addEventListener('change', () => setDietType(input.value as DietType));
     });
   }
 

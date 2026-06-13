@@ -2,16 +2,16 @@ import { type BudgetTier } from '../types';
 import { getState, setBudgetTier, subscribe } from '../state';
 
 const TIERS: { value: BudgetTier; label: string; range: string; icon: string }[] = [
-  { value: 'low',    label: 'Budget',   range: '< ₹200/day',  icon: '🪙' },
+  { value: 'low',    label: 'Budget',   range: '< ₹200/day',   icon: '🪙' },
   { value: 'medium', label: 'Standard', range: '₹200–400/day', icon: '💳' },
-  { value: 'high',   label: 'Premium',  range: '₹400+/day',   icon: '✨' },
+  { value: 'high',   label: 'Premium',  range: '₹400+/day',    icon: '✨' },
 ];
 
 export function BudgetSelector(): HTMLElement {
   const section = document.createElement('div');
 
   function render() {
-    const { budgetTier } = getState();
+    const { budgetTier } = getState().form;
 
     section.innerHTML = `
       <fieldset class="border-0 p-0 m-0">
@@ -44,9 +44,7 @@ export function BudgetSelector(): HTMLElement {
     `;
 
     section.querySelectorAll<HTMLInputElement>('input[name="budget"]').forEach(input => {
-      input.addEventListener('change', () => {
-        setBudgetTier(input.value as BudgetTier);
-      });
+      input.addEventListener('change', () => setBudgetTier(input.value as BudgetTier));
     });
   }
 

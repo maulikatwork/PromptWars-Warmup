@@ -3,7 +3,10 @@ import { ProteinMatrix } from './components/ProteinMatrix';
 import { BudgetSelector } from './components/BudgetSelector';
 import { ContextInput } from './components/ContextInput';
 import { ResultsPlaceholder } from './components/ResultsPlaceholder';
-import { getState } from './state';
+import { LoadingState } from './components/LoadingState';
+import { ErrorState } from './components/ErrorState';
+import { getState, subscribe, setLoading, setDashboardData, setApiError } from './state';
+import { generateMealPlan } from './services/api';
 
 export function App(): HTMLElement {
   const root = document.createElement('div');
@@ -22,7 +25,7 @@ export function App(): HTMLElement {
     </div>
   `;
 
-  // ── Main layout ───────────────────────────────────────────
+  // ── Main ──────────────────────────────────────────────────
   const main = document.createElement('main');
   main.className = 'max-w-3xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6';
 
@@ -31,8 +34,7 @@ export function App(): HTMLElement {
   inputCard.setAttribute('aria-label', 'Meal plan inputs');
   inputCard.className = [
     'bg-[var(--color-surface)] rounded-[var(--radius-xl)]',
-    'border border-[var(--color-border)]',
-    'shadow-[var(--shadow-card)]',
+    'border border-[var(--color-border)] shadow-[var(--shadow-card)]',
     'p-5 sm:p-6 flex flex-col gap-6',
   ].join(' ');
 
@@ -48,32 +50,37 @@ export function App(): HTMLElement {
     return hr;
   };
 
-  // ── Submit button ─────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────
   const submitWrapper = document.createElement('div');
   submitWrapper.innerHTML = `
     <button
       id="generate-btn"
       type="button"
       class="w-full py-3 px-6 rounded-[var(--radius-md)] bg-[var(--color-brand-500)] text-white
-             font-semibold text-sm tracking-wide
-             shadow-[var(--shadow-card)] hover:bg-[var(--color-brand-600)]
-             active:scale-[0.98] transition-all duration-150 cursor-pointer
-             disabled:opacity-50 disabled:cursor-not-allowed"
+             font-semibold text-sm tracking-wide shadow-[var(--shadow-card)]
+             hover:bg-[var(--color-brand-600)] active:scale-[0.98]
+             transition-all duration-150 cursor-pointer
+             disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
     >
       Generate Meal Plan
     </button>
-    <p id="submit-hint" class="text-xs text-center text-[var(--color-muted)] mt-2 hidden"></p>
   `;
 
   const generateBtn = submitWrapper.querySelector<HTMLButtonElement>('#generate-btn')!;
-  generateBtn.addEventListener('click', () => {
-    const state = getState();
-    console.log('[Task 1] Form state ready for API handoff:', JSON.stringify(state, null, 2));
-    // Task 2 will wire this to the DeepSeek API call
-    const hint = submitWrapper.querySelector<HTMLParagraphElement>('#submit-hint')!;
-    hint.textContent = `Diet: ${state.dietType} · Budget: ${state.budgetTier} · Proteins: ${state.selectedProteins.join(', ') || 'AI decides'}`;
-    hint.classList.remove('hidden');
-  });
+
+  async function handleGenerate() {
+    const { form } = getState();
+    setLoading();
+    try {
+      const data = await generateMealPlan(form);
+      setDashboardData(data);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setApiError(msg);
+    }
+  }
+
+  generateBtn.addEventListener('click', handleGenerate);
 
   // ── Results section ───────────────────────────────────────
   const resultsSection = document.createElement('section');
@@ -86,7 +93,51 @@ export function App(): HTMLElement {
     <p class="text-xs text-[var(--color-muted)] mt-0.5">Meal itinerary, grocery list, and smart swaps</p>
   `;
 
-  // Assemble input card
+  const resultsBody = document.createElement('div');
+
+  function renderResults() {
+    const { apiStatus, apiError } = getState();
+
+    // Disable button while loading
+    generateBtn.disabled = apiStatus === 'loading';
+    generateBtn.textContent = apiStatus === 'loading' ? 'Generating…' : 'Generate Meal Plan';
+
+    resultsBody.innerHTML = '';
+
+    if (apiStatus === 'idle') {
+      resultsBody.appendChild(ResultsPlaceholder());
+    } else if (apiStatus === 'loading') {
+      resultsBody.appendChild(LoadingState());
+    } else if (apiStatus === 'error') {
+      resultsBody.appendChild(ErrorState(apiError ?? 'Unknown error', handleGenerate));
+    } else if (apiStatus === 'success') {
+      // Task 3 will render the full dashboard here.
+      // For now show a success confirmation with raw data summary.
+      const { dashboardData } = getState();
+      resultsBody.innerHTML = `
+        <div class="rounded-[var(--radius-lg)] border border-[var(--color-success)]/30 bg-green-50 p-5 flex flex-col gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">✅</span>
+            <p class="text-sm font-semibold text-[var(--color-success)]">Meal plan generated successfully</p>
+          </div>
+          <p class="text-xs text-[var(--color-muted)]">
+            ${dashboardData?.meals.length ?? 0} meals · ₹${dashboardData?.totalCost ?? 0} total ·
+            ${dashboardData?.swaps.length ?? 0} swap${(dashboardData?.swaps.length ?? 0) !== 1 ? 's' : ''} suggested
+          </p>
+          <pre class="text-xs bg-[var(--color-surface)] rounded-[var(--radius-md)] border border-[var(--color-border)] p-3 overflow-x-auto text-[var(--color-fg)] font-mono leading-relaxed">${JSON.stringify(dashboardData, null, 2)}</pre>
+          <p class="text-xs text-[var(--color-muted)]">Full dashboard UI coming in Task 3.</p>
+        </div>
+      `;
+    }
+  }
+
+  renderResults();
+  subscribe(renderResults);
+
+  resultsSection.appendChild(resultsHeading);
+  resultsSection.appendChild(resultsBody);
+
+  // ── Assemble input card ───────────────────────────────────
   inputCard.appendChild(inputHeading);
   inputCard.appendChild(divider());
   inputCard.appendChild(DietSelector());
@@ -99,14 +150,8 @@ export function App(): HTMLElement {
   inputCard.appendChild(divider());
   inputCard.appendChild(submitWrapper);
 
-  // Assemble results section
-  resultsSection.appendChild(resultsHeading);
-  resultsSection.appendChild(ResultsPlaceholder());
-
-  // Assemble main
   main.appendChild(inputCard);
   main.appendChild(resultsSection);
-
   root.appendChild(header);
   root.appendChild(main);
 

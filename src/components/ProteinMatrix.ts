@@ -5,7 +5,7 @@ export function ProteinMatrix(): HTMLElement {
   const section = document.createElement('div');
 
   function render() {
-    const { dietType, selectedProteins } = getState();
+    const { dietType, selectedProteins } = getState().form;
     const options = PROTEIN_OPTIONS[dietType];
 
     section.innerHTML = `
@@ -36,9 +36,7 @@ export function ProteinMatrix(): HTMLElement {
     `;
 
     section.querySelectorAll<HTMLButtonElement>('[data-protein]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        toggleProtein(btn.dataset.protein!);
-      });
+      btn.addEventListener('click', () => toggleProtein(btn.dataset.protein!));
     });
   }
 

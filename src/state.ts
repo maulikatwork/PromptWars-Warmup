@@ -1,22 +1,43 @@
-import { type FormState, type DietType, type BudgetTier, PROTEIN_OPTIONS } from './types';
+import { type FormState, type DietType, type BudgetTier, type DashboardData, type ApiStatus, PROTEIN_OPTIONS } from './types';
 
-type Listener = (state: FormState) => void;
+// ── Combined app state ─────────────────────────────────────
+interface AppState {
+  form: FormState;
+  apiStatus: ApiStatus;
+  dashboardData: DashboardData | null;
+  apiError: string | null;
+}
 
-const state: FormState = {
-  dietType: 'vegetarian',
-  selectedProteins: [],
-  budgetTier: 'medium',
-  customRequest: '',
+type Listener = (state: AppState) => void;
+
+const state: AppState = {
+  form: {
+    dietType: 'vegetarian',
+    selectedProteins: [],
+    budgetTier: 'medium',
+    customRequest: '',
+  },
+  apiStatus: 'idle',
+  dashboardData: null,
+  apiError: null,
 };
 
 const listeners: Listener[] = [];
 
-function notify() {
-  listeners.forEach(fn => fn({ ...state, selectedProteins: [...state.selectedProteins] }));
+function snapshot(): AppState {
+  return {
+    ...state,
+    form: { ...state.form, selectedProteins: [...state.form.selectedProteins] },
+  };
 }
 
-export function getState(): FormState {
-  return { ...state, selectedProteins: [...state.selectedProteins] };
+function notify() {
+  const snap = snapshot();
+  listeners.forEach(fn => fn(snap));
+}
+
+export function getState(): AppState {
+  return snapshot();
 }
 
 export function subscribe(fn: Listener): () => void {
@@ -24,27 +45,47 @@ export function subscribe(fn: Listener): () => void {
   return () => listeners.splice(listeners.indexOf(fn), 1);
 }
 
+// ── Form mutations ─────────────────────────────────────────
 export function setDietType(diet: DietType) {
-  state.dietType = diet;
-  // Drop proteins that are no longer valid for the new diet
+  state.form.dietType = diet;
   const valid = PROTEIN_OPTIONS[diet];
-  state.selectedProteins = state.selectedProteins.filter(p => valid.includes(p));
+  state.form.selectedProteins = state.form.selectedProteins.filter(p => valid.includes(p));
   notify();
 }
 
 export function toggleProtein(protein: string) {
-  const idx = state.selectedProteins.indexOf(protein);
-  if (idx === -1) state.selectedProteins.push(protein);
-  else state.selectedProteins.splice(idx, 1);
+  const idx = state.form.selectedProteins.indexOf(protein);
+  if (idx === -1) state.form.selectedProteins.push(protein);
+  else state.form.selectedProteins.splice(idx, 1);
   notify();
 }
 
 export function setBudgetTier(tier: BudgetTier) {
-  state.budgetTier = tier;
+  state.form.budgetTier = tier;
   notify();
 }
 
 export function setCustomRequest(text: string) {
-  state.customRequest = text;
+  state.form.customRequest = text;
+  notify();
+}
+
+// ── API state mutations ────────────────────────────────────
+export function setLoading() {
+  state.apiStatus = 'loading';
+  state.apiError = null;
+  notify();
+}
+
+export function setDashboardData(data: DashboardData) {
+  state.apiStatus = 'success';
+  state.dashboardData = data;
+  state.apiError = null;
+  notify();
+}
+
+export function setApiError(message: string) {
+  state.apiStatus = 'error';
+  state.apiError = message;
   notify();
 }

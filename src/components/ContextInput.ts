@@ -12,7 +12,7 @@ export function ContextInput(): HTMLElement {
   let debounceTimer: ReturnType<typeof setTimeout>;
 
   function render() {
-    const { customRequest } = getState();
+    const { customRequest } = getState().form;
 
     section.innerHTML = `
       <div>
@@ -51,8 +51,7 @@ export function ContextInput(): HTMLElement {
       clearTimeout(debounceTimer);
       const val = textarea.value.slice(0, 300);
       debounceTimer = setTimeout(() => setCustomRequest(val), 150);
-      // Update char counter immediately without full re-render
-      const counter = section.querySelector<HTMLSpanElement>('span.text-xs.text-\\[var\\(--color-muted\\)\\]:last-child');
+      const counter = section.querySelector<HTMLSpanElement>('.char-counter');
       if (counter) counter.textContent = `${val.length}/300`;
     });
 
@@ -65,11 +64,10 @@ export function ContextInput(): HTMLElement {
   }
 
   render();
-  // Only subscribe for external state changes (e.g., diet reset), not every keystroke
   subscribe((newState) => {
     const textarea = section.querySelector<HTMLTextAreaElement>('#custom-request');
     if (!textarea || document.activeElement === textarea) return;
-    if (textarea.value !== newState.customRequest) render();
+    if (textarea.value !== newState.form.customRequest) render();
   });
 
   return section;
